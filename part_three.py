@@ -22,11 +22,23 @@ class SimpleCNN(nn.Module):
     def __init__(self):
         super(SimpleCNN, self).__init__()
         # TODO - define the layers of the network you will use
-        ...
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(128 * 4 * 4, 512)
+        self.fc2 = nn.Linear(512, 100)
+        self.dropout = nn.Dropout(0.5)
     
     def forward(self, x):
         # TODO - define the forward pass of the network you will use
-        ...
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = self.pool(F.relu(self.conv3(x)))
+        x = x.view(-1, 128 * 4 * 4)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
+        x = self.fc2(x)
 
         return x
 
@@ -51,10 +63,14 @@ def train(epoch, model, trainloader, optimizer, criterion, CONFIG):
         inputs, labels = inputs.to(device), labels.to(device)
 
         ### TODO - Your code here
-        ...
+        optimizer.zero_grad()
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
 
-        running_loss += ...   ### TODO
-        _, predicted = ...    ### TODO
+        running_loss += loss.item()   ### TODO
+        _, predicted = outputs.max(1)    ### TODO
 
         total += labels.size(0)
         correct += predicted.eq(labels).sum().item()
@@ -87,11 +103,11 @@ def validate(model, valloader, criterion, device):
             # move inputs and labels to the target device
             inputs, labels = inputs.to(device), labels.to(device)
 
-            outputs = ... ### TODO -- inference
-            loss = ...    ### TODO -- loss calculation
+            outputs = model(inputs) ### TODO -- inference
+            loss = criterion(outputs, labels)    ### TODO -- loss calculation
 
-            running_loss += ...  ### SOLUTION -- add loss from this sample
-            _, predicted = ...   ### SOLUTION -- predict the class
+            running_loss += loss.item()  ### SOLUTION -- add loss from this sample
+            _, predicted = outputs.max(1)   ### SOLUTION -- predict the class
 
             total += labels.size(0)
             correct += predicted.eq(labels).sum().item()
@@ -135,8 +151,10 @@ def main():
     ############################################################################
 
     transform_train = transforms.Compose([
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomCrop(32, padding=4),
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)), # Example normalization
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ])
 
     ###############
@@ -144,7 +162,10 @@ def main():
     ###############
 
     # Validation and test transforms (NO augmentation)
-    transform_test = ...   ### TODO -- BEGIN SOLUTION
+    transform_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+    ])   ### TODO -- BEGIN SOLUTION
 
     ############################################################################
     #       Data Loading
@@ -154,22 +175,22 @@ def main():
                                             download=True, transform=transform_train)
 
     # Split train into train and validation (80/20 split)
-    train_size = ...   ### TODO -- Calculate training set size
-    val_size = ...     ### TODO -- Calculate validation set size
-    trainset, valset = ...  ### TODO -- split into training and validation sets
+    train_size = int(0.8 * len(trainset))   ### TODO -- Calculate training set size
+    val_size = len(trainset) - train_size     ### TODO -- Calculate validation set size
+    trainset, valset = torch.utils.data.random_split(trainset, [train_size, val_size])  ### TODO -- split into training and validation sets
 
     ### TODO -- define loaders and test set
-    trainloader = ...
-    valloader = ...
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=CONFIG["num_workers"])
+    valloader = torch.utils.data.DataLoader(valset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
 
     # ... (Create validation and test loaders)
-    testset = ...
-    testloader = ...
+    testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=True, transform=transform_test)
+    testloader = torch.utils.data.DataLoader(testset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=CONFIG["num_workers"])
     
     ############################################################################
     #   Instantiate model and move to target device
     ############################################################################
-    model = ...   # instantiate your model ### TODO
+    model = SimpleCNN().to(CONFIG["device"])   # instantiate your model ### TODO
     model = model.to(CONFIG["device"])   # move it to target device
 
     print("\nModel summary:")
@@ -190,9 +211,9 @@ def main():
     ############################################################################
     # Loss Function, Optimizer and optional learning rate scheduler
     ############################################################################
-    criterion = ...   ### TODO -- define loss criterion
-    optimizer = ...   ### TODO -- define optimizer
-    scheduler = ...  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
+    criterion = nn.CrossEntropyLoss()   ### TODO -- define loss criterion
+    optimizer = optim.SGD(model.parameters(), lr=CONFIG["learning_rate"], momentum=0.9)   ### TODO -- define optimizer
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
 
 
     # Initialize wandb
