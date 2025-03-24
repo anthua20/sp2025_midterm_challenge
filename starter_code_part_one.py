@@ -132,8 +132,8 @@ def main():
     CONFIG = {
         "model": "MyModel",   # Change name when using a different model
         "batch_size": 512, # run batch size finder to find optimal batch size
-        "learning_rate": 0.001,
-        "epochs": 5,  # Train for longer in a real scenario
+        "learning_rate": 0.01,
+        "epochs": 20,  # Train for longer in a real scenario
         "num_workers": 4, # Adjust based on your system
         "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
         "data_dir": "./data",  # Make sure this directory exists
@@ -160,10 +160,10 @@ def main():
     ###############
 
     # Validation and test transforms (NO augmentation)
-    transform_test = transforms.Compose([   ### TODO -- BEGIN SOLUTION
+    transform_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
-    ])
+    ])   ### TODO -- BEGIN SOLUTION
 
     ############################################################################
     #       Data Loading
