@@ -133,7 +133,7 @@ def main():
         "model": "ResNet34",   # Change name when using a different model
         "batch_size": 128, # run batch size finder to find optimal batch size
         "learning_rate": 0.01,
-        "epochs": 1,  # Train for longer in a real scenario
+        "epochs": 50,  # Train for longer in a real scenario
         "num_workers": 4, # Adjust based on your system
         "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
         "data_dir": "./data",  # Make sure this directory exists
@@ -154,6 +154,7 @@ def main():
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
         transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
+        transforms.RandomErasing(p=0.5, scale=(0.02, 0.2), ratio=(0.3, 3.3)),
         transforms.AutoAugment(transforms.AutoAugmentPolicy.CIFAR10),
         transforms.ToTensor(),
         transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)), # Example normalization
@@ -231,7 +232,7 @@ def main():
     # The following code you can run once to find the batch size that gives you the fastest throughput.
     # You only have to do this once for each machine you use, then you can just
     # set it in CONFIG.
-    SEARCH_BATCH_SIZES = False
+    SEARCH_BATCH_SIZES = True
     if SEARCH_BATCH_SIZES:
         from utils import find_optimal_batch_size
         print("Finding optimal batch size...")
@@ -243,12 +244,9 @@ def main():
     ############################################################################
     # Loss Function, Optimizer and optional learning rate scheduler
     ############################################################################
-    criterion = nn.CrossEntropyLoss()   ### TODO -- define loss criterion
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)   ### TODO -- define loss criterion
     optimizer = optim.SGD(model.parameters(), lr=CONFIG["learning_rate"], momentum=0.9, weight_decay=5e-4)   ### TODO -- define optimizer
-    scheduler = optim.lr_scheduler.OneCycleLR(
-        optimizer, max_lr=CONFIG["learning_rate"], steps_per_epoch=len(trainloader),
-        epochs=CONFIG["epochs"], pct_start=0.1, anneal_strategy='cos'
-    )  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=CONFIG["epochs"])  # Add a scheduler   ### TODO -- you can optionally add a LR scheduler
 
 
     # Initialize wandb
