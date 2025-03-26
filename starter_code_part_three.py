@@ -133,7 +133,7 @@ def main():
         "model": "ResNet34",   # Change name when using a different model
         "batch_size": 128, # run batch size finder to find optimal batch size
         "learning_rate": 0.01,
-        "epochs": 50,  # Train for longer in a real scenario
+        "epochs": 100,  # Train for longer in a real scenario
         "num_workers": 4, # Adjust based on your system
         "device": "mps" if torch.backends.mps.is_available() else "cuda" if torch.cuda.is_available() else "cpu",
         "data_dir": "./data",  # Make sure this directory exists
@@ -169,28 +169,6 @@ def main():
         transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)),
     ])   ### TODO -- BEGIN SOLUTION
 
-    ###############
-    # PRETRAINING
-    ###############
-
-    trainset_c10 = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                            download=True, transform=transform_train)
-    trainloader_c10 = torch.utils.data.DataLoader(trainset_c10, batch_size=CONFIG["batch_size"],
-                                             shuffle=True, num_workers=CONFIG["num_workers"])
-    
-    model_c10 = torchvision.models.resnet34(weights=None)
-    model_c10.fc = nn.Linear(model_c10.fc.in_features, 10)
-    model_c10 = model_c10.to(CONFIG["device"])
-
-    trained_criterion = nn.CrossEntropyLoss()
-    trained_optimizer = optim.SGD(model_c10.parameters(), lr=CONFIG["learning_rate"], momentum=0.9, weight_decay=5e-4)
-
-    for epoch in range(CONFIG["epochs"]):
-        train_loss, train_acc = train(epoch, model_c10, trainloader_c10, trained_optimizer, trained_criterion, CONFIG)
-    
-    torch.save(model_c10.state_dict(), "pretrained_cifar10.pth")
-    print("Finished pretraining on CIFAR-10.")
-
     ############################################################################
     #       Data Loading
     ############################################################################
@@ -218,11 +196,8 @@ def main():
     ############################################################################
     #   Instantiate model and move to target device
     ############################################################################
-    model = torchvision.models.resnet34(weights=torchvision.models.ResNet34_Weights.DEFAULT)   # instantiate your model ### TODO
+    model = torchvision.models.resnet34(weights=torchvision.models.ResNet34_Weights.IMAGENET1K_V1)   # instantiate your model ### TODO
     model.fc = nn.Linear(model.fc.in_features, 100)
-    state_dict = torch.load("pretrained_cifar10.pth", map_location=CONFIG["device"])
-    filtered_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("fc")}
-    model.load_state_dict(filtered_state_dict, strict=False)
     model = model.to(CONFIG["device"])   # move it to target device
 
     print("\nModel summary:")
