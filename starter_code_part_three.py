@@ -185,7 +185,7 @@ def main():
     trained_criterion = nn.CrossEntropyLoss()
     trained_optimizer = optim.SGD(model_c10.parameters(), lr=CONFIG["learning_rate"], momentum=0.9, weight_decay=5e-4)
 
-    for epoch in range(20):
+    for epoch in range(100):
         train_loss, train_acc = train(epoch, model_c10, trainloader_c10, trained_optimizer, trained_criterion, CONFIG)
     
     torch.save(model_c10.state_dict(), "pretrained_cifar10.pth")
@@ -218,7 +218,7 @@ def main():
     ############################################################################
     #   Instantiate model and move to target device
     ############################################################################
-    model = torchvision.models.resnet34(weights=torchvision.models.ResNet34_Weights.DEFAULT)   # instantiate your model ### TODO
+    model = torchvision.models.resnet34(weights=torchvision.models.ResNet34_Weights.IMAGENET1K_V1)   # instantiate your model ### TODO
     model.fc = nn.Linear(model.fc.in_features, 100)
     state_dict = torch.load("pretrained_cifar10.pth", map_location=CONFIG["device"])
     filtered_state_dict = {k: v for k, v in state_dict.items() if not k.startswith("fc")}
